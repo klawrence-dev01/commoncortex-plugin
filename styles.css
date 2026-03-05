@@ -1,0 +1,341 @@
+/* CommonCortex Plugin Styles */
+
+/* ── Contributor Panel ─────────────────────────────────── */
+
+.cc-contributor-panel {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cc-contributor-panel .cc-empty {
+  color: var(--text-muted);
+  font-size: 0.85em;
+  font-style: italic;
+}
+
+.cc-contributor-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 6px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.cc-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 0.85em;
+  flex-shrink: 0;
+  color: white;
+}
+
+.cc-avatar.cc-role-agent {
+  background: var(--color-green);
+}
+
+.cc-avatar.cc-role-owner {
+  background: var(--color-blue);
+}
+
+.cc-contributor-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.cc-contributor-name {
+  font-weight: 600;
+  font-size: 0.9em;
+  margin: 0 0 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cc-contributor-role {
+  font-size: 0.75em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 0 0 4px;
+}
+
+.cc-contributor-meta {
+  font-size: 0.78em;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ── Inbox View ────────────────────────────────────────── */
+
+.cc-inbox-view {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+.cc-inbox-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.cc-inbox-header h4 {
+  margin: 0;
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.cc-inbox-empty {
+  color: var(--text-muted);
+  font-style: italic;
+  font-size: 0.85em;
+}
+
+.cc-proposal-card {
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cc-proposal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.cc-proposal-by {
+  font-weight: 600;
+  font-size: 0.88em;
+}
+
+.cc-proposal-date {
+  font-size: 0.75em;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.cc-proposal-path {
+  font-family: var(--font-monospace);
+  font-size: 0.78em;
+  color: var(--text-accent);
+  word-break: break-all;
+}
+
+.cc-proposal-note {
+  font-size: 0.82em;
+  color: var(--text-normal);
+  font-style: italic;
+}
+
+.cc-proposal-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.cc-btn {
+  flex: 1;
+  padding: 5px 10px;
+  border-radius: 4px;
+  font-size: 0.82em;
+  cursor: pointer;
+  border: none;
+  font-weight: 500;
+}
+
+.cc-btn-approve {
+  background: var(--color-green);
+  color: white;
+}
+
+.cc-btn-approve:hover {
+  opacity: 0.85;
+}
+
+.cc-btn-reject {
+  background: var(--background-modifier-error);
+  color: white;
+}
+
+.cc-btn-reject:hover {
+  opacity: 0.85;
+}
+
+/* ── Attribution Badges (file explorer) ─────────────────── */
+
+.cc-badge {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-left: 5px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.cc-badge-agent {
+  background: var(--color-green);
+}
+
+/* ── Sync Settings Tab ──────────────────────────────────── */
+
+.cc-settings-desc {
+  color: var(--text-muted);
+  font-size: 0.85em;
+  margin-bottom: 16px;
+}
+
+.cc-sync-source {
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  background: var(--background-primary);
+}
+
+.cc-sync-source hr {
+  display: none; /* visual separator handled by border on the card */
+}
+
+.cc-sync-chips-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 4px 0 8px;
+  flex-wrap: wrap;
+}
+
+.cc-sync-chips-label {
+  font-size: 0.82em;
+  color: var(--text-muted);
+  padding-top: 3px;
+  flex-shrink: 0;
+}
+
+.cc-sync-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.cc-sync-folder-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  padding: 2px 6px 2px 8px;
+  font-size: 0.82em;
+}
+
+.cc-sync-folder-chip button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.85em;
+  padding: 0 1px;
+  line-height: 1;
+}
+
+.cc-sync-folder-chip button:hover {
+  color: var(--text-error);
+}
+
+/* ── Clone status line ──────────────────────────────────── */
+
+.cc-clone-status {
+  font-size: 0.8em;
+  padding: 2px 0 8px 2px;
+  font-family: var(--font-monospace);
+}
+
+.cc-clone-status.cc-status-ok {
+  color: var(--color-green);
+}
+
+.cc-clone-status.cc-status-pending {
+  color: var(--text-muted);
+  font-style: italic;
+  font-family: inherit;
+}
+
+.cc-source-git {
+  font-style: italic;
+}
+
+/* ── Folder multi-select ────────────────────────────────── */
+
+.cc-folder-select {
+  padding: 8px 0 4px;
+}
+
+.cc-folder-select-label {
+  font-size: 0.82em;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 0 0 6px;
+}
+
+.cc-folder-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 2px 12px;
+  padding: 2px 0;
+}
+
+.cc-folder-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.cc-folder-row:hover {
+  background: var(--background-secondary);
+}
+
+.cc-folder-row input[type="checkbox"] {
+  cursor: pointer;
+  flex-shrink: 0;
+  accent-color: var(--color-accent);
+}
+
+.cc-folder-row label {
+  cursor: pointer;
+  font-size: 0.88em;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.cc-folder-hint {
+  font-size: 0.82em;
+  color: var(--text-muted);
+  font-style: italic;
+  margin: 0;
+}

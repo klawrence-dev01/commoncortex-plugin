@@ -1,0 +1,17 @@
+{
+  "name": "commoncortex-obsidian",
+  "version": "0.2.0",
+  "description": "CommonCortex Obsidian plugin — contributor panel, inbox, and attribution",
+  "main": "main.js",
+  "scripts": {
+    "dev": "node esbuild.config.mjs",
+    "build": "node esbuild.config.mjs production",
+    "install-plugin": "node scripts/install.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "esbuild": "^0.21.0",
+    "obsidian": "latest",
+    "typescript": "^5.5.0"
+  }
+}

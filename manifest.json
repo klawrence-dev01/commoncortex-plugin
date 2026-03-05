@@ -1,0 +1,10 @@
+{
+  "id": "commoncortex",
+  "name": "CommonCortex",
+  "version": "0.2.0",
+  "minAppVersion": "1.4.0",
+  "description": "Contributor panel, agent inbox, and attribution badges for your shared vault.",
+  "author": "CommonCortex",
+  "authorUrl": "https://commoncortex.ai",
+  "isDesktopOnly": true
+}
