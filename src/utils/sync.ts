@@ -94,43 +94,15 @@ export async function syncAll(
     finishedAt: new Date().toISOString(),
   };
 
-  // ── Step 1: Pull the shared vault from GitHub ─────────────────────────────
-  // This brings in commits from other machines before we do anything else.
-  try {
-    await gitPullRepo(vaultRoot);
-  } catch (err) {
-    // Non-fatal — vault may have uncommitted local changes or no remote set up.
-    // Log and continue; the per-source sync will still run.
-    merged.errors.push(`vault git pull: ${(err as Error).message}`);
-  }
-
-  // ── Step 2: Bidirectional sync with each source repo ─────────────────────
+  // ── Step 1: Bidirectional sync with each source repo ─────────────────────
+  // Vault is a plain local folder — no vault-level git pull needed.
+  // All git operations happen at the content repo level.
   for (const source of sources) {
     const result = await syncSource(source, vaultRoot, ownerName, ownerEmail);
     merged.filesUpdated += result.filesUpdated;
     merged.filesPushedBack += result.filesPushedBack;
     merged.filesSkipped += result.filesSkipped;
     merged.errors.push(...result.errors);
-  }
-
-  // ── Step 3: Commit any local vault changes + push to GitHub ───────────────
-  // This covers user edits made directly in Obsidian, plus any files pulled in
-  // by source syncs above.  One commit + push at the end keeps it clean.
-  try {
-    await gitAdd(vaultRoot, "-A");
-    await gitCommit(
-      vaultRoot,
-      `sync: local vault changes`,
-      ownerName,
-      ownerEmail
-    );
-  } catch {
-    // "nothing to commit" is expected when the tree is clean — ignore
-  }
-  try {
-    await gitPush(vaultRoot);
-  } catch (err) {
-    merged.errors.push(`vault push failed: ${(err as Error).message}`);
   }
 
   merged.finishedAt = new Date().toISOString();

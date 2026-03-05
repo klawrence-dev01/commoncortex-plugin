@@ -391,32 +391,12 @@ async function syncAll(sources, vaultRoot, ownerName, ownerEmail) {
     errors: [],
     finishedAt: (/* @__PURE__ */ new Date()).toISOString()
   };
-  try {
-    await gitPullRepo(vaultRoot);
-  } catch (err) {
-    merged.errors.push(`vault git pull: ${err.message}`);
-  }
   for (const source of sources) {
     const result = await syncSource(source, vaultRoot, ownerName, ownerEmail);
     merged.filesUpdated += result.filesUpdated;
     merged.filesPushedBack += result.filesPushedBack;
     merged.filesSkipped += result.filesSkipped;
     merged.errors.push(...result.errors);
-  }
-  try {
-    await gitAdd(vaultRoot, "-A");
-    await gitCommit(
-      vaultRoot,
-      `sync: local vault changes`,
-      ownerName,
-      ownerEmail
-    );
-  } catch {
-  }
-  try {
-    await gitPush(vaultRoot);
-  } catch (err) {
-    merged.errors.push(`vault push failed: ${err.message}`);
   }
   merged.finishedAt = (/* @__PURE__ */ new Date()).toISOString();
   return merged;
