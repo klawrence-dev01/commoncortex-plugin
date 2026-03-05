@@ -1,6 +1,8 @@
 import { ItemView, WorkspaceLeaf, TFile } from "obsidian";
 import { getFileMeta, formatDate, getInitial } from "../utils/frontmatter";
 import { gitGetLastAuthor } from "../utils/git";
+import { getCachePath, findSourceForVaultFile } from "../utils/sync";
+import { SyncSource } from "../settings";
 
 export const CONTRIBUTOR_PANEL_VIEW = "cc-contributor-panel";
 
@@ -8,11 +10,18 @@ export class ContributorPanelView extends ItemView {
   private unsubscribe?: () => void;
   private vaultRoot: string;
   private agentIds: Set<string>;
+  private getSyncSources: () => SyncSource[];
 
-  constructor(leaf: WorkspaceLeaf, vaultRoot: string, agentIds: Set<string>) {
+  constructor(
+    leaf: WorkspaceLeaf,
+    vaultRoot: string,
+    agentIds: Set<string>,
+    getSyncSources: () => SyncSource[]
+  ) {
     super(leaf);
     this.vaultRoot = vaultRoot;
     this.agentIds = agentIds;
+    this.getSyncSources = getSyncSources;
   }
 
   getViewType(): string {
@@ -72,9 +81,14 @@ export class ContributorPanelView extends ItemView {
       return;
     }
 
-    // Git fallback — works for any committed file with no frontmatter
+    // Git fallback — look up history in the source repo clone, not the vault
     try {
-      const gitAuthor = await gitGetLastAuthor(this.vaultRoot, file.path);
+      const match = findSourceForVaultFile(this.getSyncSources(), file.path);
+      const repoPath = match
+        ? getCachePath(match.source.id)
+        : this.vaultRoot; // fallback to vault root (won't work but won't crash)
+
+      const gitAuthor = await gitGetLastAuthor(repoPath, match?.repoRelativePath ?? file.path);
       if (gitAuthor) {
         this.renderContributorCard(container, {
           name: gitAuthor.name,

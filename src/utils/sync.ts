@@ -304,3 +304,64 @@ async function hashFile(filePath: string): Promise<string> {
   const buf = await fs.readFile(filePath);
   return crypto.createHash("sha256").update(buf).digest("hex");
 }
+
+// ── Delete from source repo ───────────────────────────────────────────────────
+
+/**
+ * Delete a file from a source repo's local clone, commit, and push.
+ * Called after user confirms deletion in the Obsidian modal.
+ *
+ * @param source     The sync source the file belongs to
+ * @param repoRelativePath  Path to the file relative to the repo root (e.g. "Companies/Jakib.md")
+ * @param ownerName  Git author name
+ * @param ownerEmail Git author email
+ */
+export async function deleteFromSource(
+  source: SyncSource,
+  repoRelativePath: string,
+  ownerName: string,
+  ownerEmail: string
+): Promise<void> {
+  const localPath = getCachePath(source.id);
+  const filePath = path.join(localPath, repoRelativePath);
+
+  try {
+    await fs.unlink(filePath);
+  } catch {
+    // File may already be gone — that's fine
+  }
+
+  await gitAdd(localPath, "-A");
+  await gitCommit(
+    localPath,
+    `delete: ${path.basename(repoRelativePath)} removed by ${ownerName}`,
+    ownerName,
+    ownerEmail
+  );
+  await gitPush(localPath);
+}
+
+/**
+ * Given a vault-relative file path, find which source repo it came from
+ * and return the repo-relative path within that source clone.
+ *
+ * Returns null if no matching source is found.
+ */
+export function findSourceForVaultFile(
+  sources: SyncSource[],
+  vaultFilePath: string
+): { source: SyncSource; repoRelativePath: string } | null {
+  for (const source of sources) {
+    const base = source.destDir ? source.destDir + "/" : "";
+    if (!vaultFilePath.startsWith(base)) continue;
+
+    const relativeToDest = vaultFilePath.slice(base.length);
+    const topFolder = relativeToDest.split("/")[0];
+
+    const match = source.folders.find(f => f.folderName === topFolder);
+    if (match) {
+      return { source, repoRelativePath: relativeToDest };
+    }
+  }
+  return null;
+}

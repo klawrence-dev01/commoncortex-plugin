@@ -2,8 +2,9 @@ import { Plugin, Notice, TFile, WorkspaceLeaf } from "obsidian";
 import { ContributorPanelView, CONTRIBUTOR_PANEL_VIEW } from "./views/ContributorPanel";
 import { InboxView, INBOX_VIEW_TYPE } from "./views/InboxView";
 import { SyncSettingsTab } from "./views/SyncSettingsTab";
+import { DeleteConfirmModal } from "./views/DeleteConfirmModal";
 import { getFileMeta } from "./utils/frontmatter";
-import { syncAll } from "./utils/sync";
+import { syncAll, deleteFromSource, findSourceForVaultFile } from "./utils/sync";
 import { PluginSettings, DEFAULT_SETTINGS } from "./settings";
 
 // Read vault manifest to find owner identity
@@ -39,7 +40,12 @@ export default class CommonCortexPlugin extends Plugin {
     // Register views
     this.registerView(
       CONTRIBUTOR_PANEL_VIEW,
-      (leaf) => new ContributorPanelView(leaf, this.vaultRoot, this.agentIds)
+      (leaf) => new ContributorPanelView(
+        leaf,
+        this.vaultRoot,
+        this.agentIds,
+        () => this.settings.syncSources
+      )
     );
     this.registerView(
       INBOX_VIEW_TYPE,
@@ -87,6 +93,36 @@ export default class CommonCortexPlugin extends Plugin {
     );
     this.registerEvent(
       this.app.metadataCache.on("changed", () => this.decorateFileExplorer())
+    );
+
+    // Delete handler — prompt user when a synced file is deleted locally
+    this.registerEvent(
+      this.app.vault.on("delete", (file) => {
+        if (!(file instanceof TFile)) return;
+        const match = findSourceForVaultFile(this.settings.syncSources, file.path);
+        if (!match) return;
+
+        new DeleteConfirmModal(
+          this.app,
+          file.name,
+          async () => {
+            try {
+              await deleteFromSource(
+                match.source,
+                match.repoRelativePath,
+                this.ownerName,
+                this.ownerEmail
+              );
+              new Notice(`"${file.name}" deleted from shared repo.`);
+            } catch (err) {
+              new Notice(`Failed to delete from repo: ${(err as Error).message}`);
+            }
+          },
+          () => {
+            new Notice(`"${file.name}" kept in shared repo.`);
+          }
+        ).open();
+      })
     );
 
     // Open contributor panel on startup, then kick off auto-sync if configured

@@ -32,7 +32,7 @@ __export(main_exports, {
   default: () => CommonCortexPlugin
 });
 module.exports = __toCommonJS(main_exports);
-var import_obsidian4 = require("obsidian");
+var import_obsidian5 = require("obsidian");
 
 // src/views/ContributorPanel.ts
 var import_obsidian = require("obsidian");
@@ -97,249 +97,6 @@ async function gitGetLastAuthor(vaultRoot, filePath) {
   if (!name || !email) return null;
   return { name, email, date: date.trim() };
 }
-
-// src/views/ContributorPanel.ts
-var CONTRIBUTOR_PANEL_VIEW = "cc-contributor-panel";
-var ContributorPanelView = class extends import_obsidian.ItemView {
-  unsubscribe;
-  vaultRoot;
-  agentIds;
-  constructor(leaf, vaultRoot, agentIds) {
-    super(leaf);
-    this.vaultRoot = vaultRoot;
-    this.agentIds = agentIds;
-  }
-  getViewType() {
-    return CONTRIBUTOR_PANEL_VIEW;
-  }
-  getDisplayText() {
-    return "Contributor";
-  }
-  getIcon() {
-    return "users";
-  }
-  async onOpen() {
-    this.render(this.app.workspace.getActiveFile());
-    this.unsubscribe = (() => {
-      const handler = (file) => this.render(file);
-      this.app.workspace.on(
-        "active-leaf-change",
-        () => handler(this.app.workspace.getActiveFile())
-      );
-      return () => {
-        this.app.workspace.off("active-leaf-change", handler);
-      };
-    })();
-  }
-  async onClose() {
-    this.unsubscribe?.();
-  }
-  async render(file) {
-    const container = this.containerEl.children[1];
-    container.empty();
-    container.addClass("cc-contributor-panel");
-    if (!file || file.extension !== "md") {
-      container.createEl("p", {
-        cls: "cc-empty",
-        text: "Open a markdown file to see its contributors."
-      });
-      return;
-    }
-    const meta = getFileMeta(this.app, file);
-    if (meta.author || meta.author_id) {
-      this.renderContributorCard(container, {
-        name: meta.author ?? meta.author_id ?? "Unknown",
-        id: meta.author_id,
-        role: this.inferRole(meta.author_id),
-        lastModified: meta.last_modified,
-        source: "frontmatter"
-      });
-      return;
-    }
-    try {
-      const gitAuthor = await gitGetLastAuthor(this.vaultRoot, file.path);
-      if (gitAuthor) {
-        this.renderContributorCard(container, {
-          name: gitAuthor.name,
-          id: gitAuthor.email,
-          role: this.inferRole(gitAuthor.email),
-          lastModified: gitAuthor.date,
-          source: "git"
-        });
-      } else {
-        container.createEl("p", {
-          cls: "cc-empty",
-          text: "No contributor metadata in this file."
-        });
-      }
-    } catch {
-      container.createEl("p", {
-        cls: "cc-empty",
-        text: "No contributor metadata in this file."
-      });
-    }
-  }
-  inferRole(authorId) {
-    if (!authorId) return "owner";
-    return this.agentIds.has(authorId) ? "agent" : "owner";
-  }
-  renderContributorCard(container, info) {
-    const card = container.createDiv({ cls: "cc-contributor-card" });
-    const avatar = card.createDiv({ cls: `cc-avatar cc-role-${info.role}` });
-    avatar.setText(getInitial(info.name));
-    const infoEl = card.createDiv({ cls: "cc-contributor-info" });
-    infoEl.createEl("p", { cls: "cc-contributor-name", text: info.name });
-    infoEl.createEl("p", { cls: "cc-contributor-role", text: info.role });
-    if (info.id) {
-      infoEl.createEl("p", { cls: "cc-contributor-meta", text: info.id });
-    }
-    if (info.lastModified) {
-      infoEl.createEl("p", {
-        cls: "cc-contributor-meta",
-        text: `Last modified: ${formatDate(info.lastModified)}`
-      });
-    }
-    if (info.source === "git") {
-      infoEl.createEl("p", {
-        cls: "cc-contributor-meta cc-source-git",
-        text: "via git history"
-      });
-    }
-  }
-};
-
-// src/views/InboxView.ts
-var import_obsidian2 = require("obsidian");
-var INBOX_VIEW_TYPE = "cc-inbox-view";
-var INBOX_FOLDER = "CommonCortex/_inbox";
-var InboxView = class extends import_obsidian2.ItemView {
-  vaultRoot;
-  ownerName;
-  ownerEmail;
-  constructor(leaf, vaultRoot, ownerName, ownerEmail) {
-    super(leaf);
-    this.vaultRoot = vaultRoot;
-    this.ownerName = ownerName;
-    this.ownerEmail = ownerEmail;
-  }
-  getViewType() {
-    return INBOX_VIEW_TYPE;
-  }
-  getDisplayText() {
-    return "Agent Inbox";
-  }
-  getIcon() {
-    return "inbox";
-  }
-  async onOpen() {
-    await this.refresh();
-    this.registerEvent(
-      this.app.vault.on("create", () => this.refresh())
-    );
-    this.registerEvent(
-      this.app.vault.on("delete", () => this.refresh())
-    );
-  }
-  async refresh() {
-    const proposals = await this.loadProposals();
-    this.renderProposals(proposals);
-  }
-  async loadProposals() {
-    const folder = this.app.vault.getAbstractFileByPath(INBOX_FOLDER);
-    if (!folder) return [];
-    const files = this.app.vault.getMarkdownFiles().filter((f) => f.path.startsWith(INBOX_FOLDER + "/"));
-    const proposals = [];
-    for (const file of files) {
-      const meta = getFileMeta(this.app, file);
-      if (!meta.proposal) continue;
-      proposals.push({
-        file,
-        proposedBy: meta.proposed_by ?? "Unknown",
-        authorId: meta.author_id ?? "",
-        intendedPath: meta.intended_path ?? file.basename,
-        note: meta.note ?? "",
-        created: meta.created ?? ""
-      });
-    }
-    return proposals.sort((a, b) => b.created.localeCompare(a.created));
-  }
-  renderProposals(proposals) {
-    const container = this.containerEl.children[1];
-    container.empty();
-    container.addClass("cc-inbox-view");
-    const header = container.createDiv({ cls: "cc-inbox-header" });
-    header.createEl("h4", { text: `Inbox (${proposals.length})` });
-    const refreshBtn = header.createEl("button", { text: "\u21BA" });
-    refreshBtn.title = "Refresh";
-    refreshBtn.onclick = () => this.refresh();
-    if (proposals.length === 0) {
-      container.createEl("p", { cls: "cc-inbox-empty", text: "No pending proposals." });
-      return;
-    }
-    for (const proposal of proposals) {
-      this.renderProposalCard(container, proposal);
-    }
-  }
-  renderProposalCard(container, proposal) {
-    const card = container.createDiv({ cls: "cc-proposal-card" });
-    const headerRow = card.createDiv({ cls: "cc-proposal-header" });
-    headerRow.createEl("span", { cls: "cc-proposal-by", text: proposal.proposedBy });
-    headerRow.createEl("span", { cls: "cc-proposal-date", text: formatDate(proposal.created) });
-    card.createEl("div", { cls: "cc-proposal-path", text: `\u2192 ${proposal.intendedPath}` });
-    if (proposal.note) {
-      card.createEl("div", { cls: "cc-proposal-note", text: `"${proposal.note}"` });
-    }
-    const actions = card.createDiv({ cls: "cc-proposal-actions" });
-    const approveBtn = actions.createEl("button", { cls: "cc-btn cc-btn-approve", text: "\u2713 Approve" });
-    approveBtn.onclick = () => this.approve(proposal);
-    const rejectBtn = actions.createEl("button", { cls: "cc-btn cc-btn-reject", text: "\u2715 Reject" });
-    rejectBtn.onclick = () => this.reject(proposal);
-  }
-  async approve(proposal) {
-    try {
-      const content = await this.app.vault.read(proposal.file);
-      const existingDest = this.app.vault.getAbstractFileByPath(proposal.intendedPath);
-      if (existingDest instanceof import_obsidian2.TFile) {
-        await this.app.vault.delete(existingDest);
-      }
-      await this.app.vault.rename(proposal.file, proposal.intendedPath);
-      await gitAdd(this.vaultRoot, "-A");
-      await gitCommit(
-        this.vaultRoot,
-        `approve: ${proposal.proposedBy} \u2192 ${proposal.intendedPath}`,
-        this.ownerName,
-        this.ownerEmail
-      );
-      await gitPush(this.vaultRoot);
-      new import_obsidian2.Notice(`\u2705 Approved and moved to ${proposal.intendedPath}`);
-      await this.refresh();
-    } catch (e) {
-      new import_obsidian2.Notice(`\u274C Approve failed: ${e.message}`);
-    }
-  }
-  async reject(proposal) {
-    try {
-      await this.app.vault.delete(proposal.file);
-      await gitAdd(this.vaultRoot, "-A");
-      await gitCommit(
-        this.vaultRoot,
-        `reject: ${proposal.proposedBy} \u2192 ${proposal.intendedPath}`,
-        this.ownerName,
-        this.ownerEmail
-      );
-      await gitPush(this.vaultRoot);
-      new import_obsidian2.Notice(`\u{1F5D1} Rejected proposal from ${proposal.proposedBy}`);
-      await this.refresh();
-    } catch (e) {
-      new import_obsidian2.Notice(`\u274C Reject failed: ${e.message}`);
-    }
-  }
-};
-
-// src/views/SyncSettingsTab.ts
-var import_obsidian3 = require("obsidian");
-var fs3 = __toESM(require("fs/promises"));
-var path3 = __toESM(require("path"));
 
 // src/utils/sync.ts
 var fs2 = __toESM(require("fs/promises"));
@@ -528,8 +285,282 @@ async function hashFile(filePath) {
   const buf = await fs2.readFile(filePath);
   return crypto.createHash("sha256").update(buf).digest("hex");
 }
+async function deleteFromSource(source, repoRelativePath, ownerName, ownerEmail) {
+  const localPath = getCachePath(source.id);
+  const filePath = path2.join(localPath, repoRelativePath);
+  try {
+    await fs2.unlink(filePath);
+  } catch {
+  }
+  await gitAdd(localPath, "-A");
+  await gitCommit(
+    localPath,
+    `delete: ${path2.basename(repoRelativePath)} removed by ${ownerName}`,
+    ownerName,
+    ownerEmail
+  );
+  await gitPush(localPath);
+}
+function findSourceForVaultFile(sources, vaultFilePath) {
+  for (const source of sources) {
+    const base = source.destDir ? source.destDir + "/" : "";
+    if (!vaultFilePath.startsWith(base)) continue;
+    const relativeToDest = vaultFilePath.slice(base.length);
+    const topFolder = relativeToDest.split("/")[0];
+    const match = source.folders.find((f) => f.folderName === topFolder);
+    if (match) {
+      return { source, repoRelativePath: relativeToDest };
+    }
+  }
+  return null;
+}
+
+// src/views/ContributorPanel.ts
+var CONTRIBUTOR_PANEL_VIEW = "cc-contributor-panel";
+var ContributorPanelView = class extends import_obsidian.ItemView {
+  unsubscribe;
+  vaultRoot;
+  agentIds;
+  getSyncSources;
+  constructor(leaf, vaultRoot, agentIds, getSyncSources) {
+    super(leaf);
+    this.vaultRoot = vaultRoot;
+    this.agentIds = agentIds;
+    this.getSyncSources = getSyncSources;
+  }
+  getViewType() {
+    return CONTRIBUTOR_PANEL_VIEW;
+  }
+  getDisplayText() {
+    return "Contributor";
+  }
+  getIcon() {
+    return "users";
+  }
+  async onOpen() {
+    this.render(this.app.workspace.getActiveFile());
+    this.unsubscribe = (() => {
+      const handler = (file) => this.render(file);
+      this.app.workspace.on(
+        "active-leaf-change",
+        () => handler(this.app.workspace.getActiveFile())
+      );
+      return () => {
+        this.app.workspace.off("active-leaf-change", handler);
+      };
+    })();
+  }
+  async onClose() {
+    this.unsubscribe?.();
+  }
+  async render(file) {
+    const container = this.containerEl.children[1];
+    container.empty();
+    container.addClass("cc-contributor-panel");
+    if (!file || file.extension !== "md") {
+      container.createEl("p", {
+        cls: "cc-empty",
+        text: "Open a markdown file to see its contributors."
+      });
+      return;
+    }
+    const meta = getFileMeta(this.app, file);
+    if (meta.author || meta.author_id) {
+      this.renderContributorCard(container, {
+        name: meta.author ?? meta.author_id ?? "Unknown",
+        id: meta.author_id,
+        role: this.inferRole(meta.author_id),
+        lastModified: meta.last_modified,
+        source: "frontmatter"
+      });
+      return;
+    }
+    try {
+      const match = findSourceForVaultFile(this.getSyncSources(), file.path);
+      const repoPath = match ? getCachePath(match.source.id) : this.vaultRoot;
+      const gitAuthor = await gitGetLastAuthor(repoPath, match?.repoRelativePath ?? file.path);
+      if (gitAuthor) {
+        this.renderContributorCard(container, {
+          name: gitAuthor.name,
+          id: gitAuthor.email,
+          role: this.inferRole(gitAuthor.email),
+          lastModified: gitAuthor.date,
+          source: "git"
+        });
+      } else {
+        container.createEl("p", {
+          cls: "cc-empty",
+          text: "No contributor metadata in this file."
+        });
+      }
+    } catch {
+      container.createEl("p", {
+        cls: "cc-empty",
+        text: "No contributor metadata in this file."
+      });
+    }
+  }
+  inferRole(authorId) {
+    if (!authorId) return "owner";
+    return this.agentIds.has(authorId) ? "agent" : "owner";
+  }
+  renderContributorCard(container, info) {
+    const card = container.createDiv({ cls: "cc-contributor-card" });
+    const avatar = card.createDiv({ cls: `cc-avatar cc-role-${info.role}` });
+    avatar.setText(getInitial(info.name));
+    const infoEl = card.createDiv({ cls: "cc-contributor-info" });
+    infoEl.createEl("p", { cls: "cc-contributor-name", text: info.name });
+    infoEl.createEl("p", { cls: "cc-contributor-role", text: info.role });
+    if (info.id) {
+      infoEl.createEl("p", { cls: "cc-contributor-meta", text: info.id });
+    }
+    if (info.lastModified) {
+      infoEl.createEl("p", {
+        cls: "cc-contributor-meta",
+        text: `Last modified: ${formatDate(info.lastModified)}`
+      });
+    }
+    if (info.source === "git") {
+      infoEl.createEl("p", {
+        cls: "cc-contributor-meta cc-source-git",
+        text: "via git history"
+      });
+    }
+  }
+};
+
+// src/views/InboxView.ts
+var import_obsidian2 = require("obsidian");
+var INBOX_VIEW_TYPE = "cc-inbox-view";
+var INBOX_FOLDER = "CommonCortex/_inbox";
+var InboxView = class extends import_obsidian2.ItemView {
+  vaultRoot;
+  ownerName;
+  ownerEmail;
+  constructor(leaf, vaultRoot, ownerName, ownerEmail) {
+    super(leaf);
+    this.vaultRoot = vaultRoot;
+    this.ownerName = ownerName;
+    this.ownerEmail = ownerEmail;
+  }
+  getViewType() {
+    return INBOX_VIEW_TYPE;
+  }
+  getDisplayText() {
+    return "Agent Inbox";
+  }
+  getIcon() {
+    return "inbox";
+  }
+  async onOpen() {
+    await this.refresh();
+    this.registerEvent(
+      this.app.vault.on("create", () => this.refresh())
+    );
+    this.registerEvent(
+      this.app.vault.on("delete", () => this.refresh())
+    );
+  }
+  async refresh() {
+    const proposals = await this.loadProposals();
+    this.renderProposals(proposals);
+  }
+  async loadProposals() {
+    const folder = this.app.vault.getAbstractFileByPath(INBOX_FOLDER);
+    if (!folder) return [];
+    const files = this.app.vault.getMarkdownFiles().filter((f) => f.path.startsWith(INBOX_FOLDER + "/"));
+    const proposals = [];
+    for (const file of files) {
+      const meta = getFileMeta(this.app, file);
+      if (!meta.proposal) continue;
+      proposals.push({
+        file,
+        proposedBy: meta.proposed_by ?? "Unknown",
+        authorId: meta.author_id ?? "",
+        intendedPath: meta.intended_path ?? file.basename,
+        note: meta.note ?? "",
+        created: meta.created ?? ""
+      });
+    }
+    return proposals.sort((a, b) => b.created.localeCompare(a.created));
+  }
+  renderProposals(proposals) {
+    const container = this.containerEl.children[1];
+    container.empty();
+    container.addClass("cc-inbox-view");
+    const header = container.createDiv({ cls: "cc-inbox-header" });
+    header.createEl("h4", { text: `Inbox (${proposals.length})` });
+    const refreshBtn = header.createEl("button", { text: "\u21BA" });
+    refreshBtn.title = "Refresh";
+    refreshBtn.onclick = () => this.refresh();
+    if (proposals.length === 0) {
+      container.createEl("p", { cls: "cc-inbox-empty", text: "No pending proposals." });
+      return;
+    }
+    for (const proposal of proposals) {
+      this.renderProposalCard(container, proposal);
+    }
+  }
+  renderProposalCard(container, proposal) {
+    const card = container.createDiv({ cls: "cc-proposal-card" });
+    const headerRow = card.createDiv({ cls: "cc-proposal-header" });
+    headerRow.createEl("span", { cls: "cc-proposal-by", text: proposal.proposedBy });
+    headerRow.createEl("span", { cls: "cc-proposal-date", text: formatDate(proposal.created) });
+    card.createEl("div", { cls: "cc-proposal-path", text: `\u2192 ${proposal.intendedPath}` });
+    if (proposal.note) {
+      card.createEl("div", { cls: "cc-proposal-note", text: `"${proposal.note}"` });
+    }
+    const actions = card.createDiv({ cls: "cc-proposal-actions" });
+    const approveBtn = actions.createEl("button", { cls: "cc-btn cc-btn-approve", text: "\u2713 Approve" });
+    approveBtn.onclick = () => this.approve(proposal);
+    const rejectBtn = actions.createEl("button", { cls: "cc-btn cc-btn-reject", text: "\u2715 Reject" });
+    rejectBtn.onclick = () => this.reject(proposal);
+  }
+  async approve(proposal) {
+    try {
+      const content = await this.app.vault.read(proposal.file);
+      const existingDest = this.app.vault.getAbstractFileByPath(proposal.intendedPath);
+      if (existingDest instanceof import_obsidian2.TFile) {
+        await this.app.vault.delete(existingDest);
+      }
+      await this.app.vault.rename(proposal.file, proposal.intendedPath);
+      await gitAdd(this.vaultRoot, "-A");
+      await gitCommit(
+        this.vaultRoot,
+        `approve: ${proposal.proposedBy} \u2192 ${proposal.intendedPath}`,
+        this.ownerName,
+        this.ownerEmail
+      );
+      await gitPush(this.vaultRoot);
+      new import_obsidian2.Notice(`\u2705 Approved and moved to ${proposal.intendedPath}`);
+      await this.refresh();
+    } catch (e) {
+      new import_obsidian2.Notice(`\u274C Approve failed: ${e.message}`);
+    }
+  }
+  async reject(proposal) {
+    try {
+      await this.app.vault.delete(proposal.file);
+      await gitAdd(this.vaultRoot, "-A");
+      await gitCommit(
+        this.vaultRoot,
+        `reject: ${proposal.proposedBy} \u2192 ${proposal.intendedPath}`,
+        this.ownerName,
+        this.ownerEmail
+      );
+      await gitPush(this.vaultRoot);
+      new import_obsidian2.Notice(`\u{1F5D1} Rejected proposal from ${proposal.proposedBy}`);
+      await this.refresh();
+    } catch (e) {
+      new import_obsidian2.Notice(`\u274C Reject failed: ${e.message}`);
+    }
+  }
+};
 
 // src/views/SyncSettingsTab.ts
+var import_obsidian3 = require("obsidian");
+var fs3 = __toESM(require("fs/promises"));
+var path3 = __toESM(require("path"));
 var SyncSettingsTab = class extends import_obsidian3.PluginSettingTab {
   plugin;
   constructor(app, plugin) {
@@ -904,6 +935,46 @@ function extractRepoName(url) {
   return parts[parts.length - 1] ?? "";
 }
 
+// src/views/DeleteConfirmModal.ts
+var import_obsidian4 = require("obsidian");
+var DeleteConfirmModal = class extends import_obsidian4.Modal {
+  fileName;
+  onConfirm;
+  onCancel;
+  constructor(app, fileName, onConfirm, onCancel) {
+    super(app);
+    this.fileName = fileName;
+    this.onConfirm = onConfirm;
+    this.onCancel = onCancel;
+  }
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.addClass("cc-delete-modal");
+    contentEl.createEl("h2", { text: "Delete from shared repo?" });
+    contentEl.createEl("p", {
+      text: `"${this.fileName}" was deleted locally. Remove it from the shared GitHub repo for everyone?`
+    });
+    const buttons = contentEl.createDiv({ cls: "cc-delete-modal-buttons" });
+    const deleteBtn = buttons.createEl("button", {
+      text: "Delete for everyone",
+      cls: "mod-warning"
+    });
+    deleteBtn.addEventListener("click", () => {
+      this.close();
+      this.onConfirm();
+    });
+    const cancelBtn = buttons.createEl("button", { text: "Keep in repo" });
+    cancelBtn.addEventListener("click", () => {
+      this.close();
+      this.onCancel();
+    });
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+};
+
 // src/settings.ts
 var DEFAULT_SETTINGS = {
   syncSources: [],
@@ -913,7 +984,7 @@ var DEFAULT_SETTINGS = {
 };
 
 // src/main.ts
-var CommonCortexPlugin = class extends import_obsidian4.Plugin {
+var CommonCortexPlugin = class extends import_obsidian5.Plugin {
   // Per-device settings (persisted to data.json, not committed to git)
   settings;
   // Vault identity — loaded from manifest.json
@@ -929,7 +1000,12 @@ var CommonCortexPlugin = class extends import_obsidian4.Plugin {
     await this.loadVaultManifest();
     this.registerView(
       CONTRIBUTOR_PANEL_VIEW,
-      (leaf) => new ContributorPanelView(leaf, this.vaultRoot, this.agentIds)
+      (leaf) => new ContributorPanelView(
+        leaf,
+        this.vaultRoot,
+        this.agentIds,
+        () => this.settings.syncSources
+      )
     );
     this.registerView(
       INBOX_VIEW_TYPE,
@@ -965,6 +1041,33 @@ var CommonCortexPlugin = class extends import_obsidian4.Plugin {
     );
     this.registerEvent(
       this.app.metadataCache.on("changed", () => this.decorateFileExplorer())
+    );
+    this.registerEvent(
+      this.app.vault.on("delete", (file) => {
+        if (!(file instanceof import_obsidian5.TFile)) return;
+        const match = findSourceForVaultFile(this.settings.syncSources, file.path);
+        if (!match) return;
+        new DeleteConfirmModal(
+          this.app,
+          file.name,
+          async () => {
+            try {
+              await deleteFromSource(
+                match.source,
+                match.repoRelativePath,
+                this.ownerName,
+                this.ownerEmail
+              );
+              new import_obsidian5.Notice(`"${file.name}" deleted from shared repo.`);
+            } catch (err) {
+              new import_obsidian5.Notice(`Failed to delete from repo: ${err.message}`);
+            }
+          },
+          () => {
+            new import_obsidian5.Notice(`"${file.name}" kept in shared repo.`);
+          }
+        ).open();
+      })
     );
     this.app.workspace.onLayoutReady(() => {
       this.openContributorPanel();
@@ -1009,12 +1112,12 @@ var CommonCortexPlugin = class extends import_obsidian4.Plugin {
   // ── Sync ────────────────────────────────────────────────────────────────────
   async runSyncCommand() {
     if (!this.settings.syncSources.length) {
-      new import_obsidian4.Notice("No sync sources configured. Open Settings \u2192 CommonCortex to add one.");
+      new import_obsidian5.Notice("No sync sources configured. Open Settings \u2192 CommonCortex to add one.");
       return;
     }
     if (this.isSyncing) return;
     this.isSyncing = true;
-    new import_obsidian4.Notice("Syncing\u2026 (pulling vault + source repos)");
+    new import_obsidian5.Notice("Syncing\u2026 (pulling vault + source repos)");
     try {
       const result = await syncAll(
         this.settings.syncSources,
@@ -1032,12 +1135,12 @@ var CommonCortexPlugin = class extends import_obsidian4.Plugin {
       if (result.filesUpdated > 0) parts.push(`${result.filesUpdated} pulled`);
       if (result.filesPushedBack > 0) parts.push(`${result.filesPushedBack} pushed`);
       const summary = parts.length ? parts.join(", ") : "nothing changed";
-      new import_obsidian4.Notice(`Sync complete: ${summary}.`);
+      new import_obsidian5.Notice(`Sync complete: ${summary}.`);
       if (result.errors.length) {
-        new import_obsidian4.Notice(`Sync had ${result.errors.length} error${result.errors.length === 1 ? "" : "s"} \u2014 check Settings \u2192 CommonCortex.`);
+        new import_obsidian5.Notice(`Sync had ${result.errors.length} error${result.errors.length === 1 ? "" : "s"} \u2014 check Settings \u2192 CommonCortex.`);
       }
     } catch (err) {
-      new import_obsidian4.Notice(`Sync error: ${err.message}`);
+      new import_obsidian5.Notice(`Sync error: ${err.message}`);
     } finally {
       this.isSyncing = false;
     }
