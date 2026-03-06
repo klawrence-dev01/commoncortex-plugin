@@ -288,6 +288,7 @@ async function hashFile(filePath) {
 async function deleteFromSource(source, repoRelativePath, ownerName, ownerEmail) {
   const localPath = getCachePath(source.id);
   const filePath = path2.join(localPath, repoRelativePath);
+  await gitPullRepo(localPath);
   try {
     await fs2.unlink(filePath);
   } catch {

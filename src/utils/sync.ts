@@ -325,6 +325,9 @@ export async function deleteFromSource(
   const localPath = getCachePath(source.id);
   const filePath = path.join(localPath, repoRelativePath);
 
+  // Pull latest before deleting to avoid non-fast-forward push rejection
+  await gitPullRepo(localPath);
+
   try {
     await fs.unlink(filePath);
   } catch {
